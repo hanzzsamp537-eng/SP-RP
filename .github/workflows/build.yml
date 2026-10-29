@@ -20,9 +20,8 @@ jobs:
 
       - name: Disable crashdetect include
         run: |
-          grep -rn "crashdetect" gamemodes --include=*.pwn --include=*.inc | head -20
-          sed -i 's#^\s*\#include\s*<crashdetect>#// &#' gamemodes/config/includes.pwn
-          sed -n '10,16p' gamemodes/config/includes.pwn
+          sed -i '/#include.*crashdetect/ s#^#// #' gamemodes/config/includes.pwn
+          sed -n '8,16p' gamemodes/config/includes.pwn
 
       - name: Build
         run: sampctl build
