@@ -1,0 +1,18 @@
+name: build
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: curl https://raw.githubusercontent.com/Southclaws/sampctl/master/install-deb.sh | sudo sh
+      - run: sampctl ensure
+      - run: sampctl build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sprp-build
+          path: |
+            gamemodes
+            dependencies
+            scriptfiles
+            models
