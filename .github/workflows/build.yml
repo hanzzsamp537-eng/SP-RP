@@ -14,16 +14,15 @@ jobs:
           sudo mv sampctl /usr/local/bin/
           sampctl version
 
-      - name: Fix path pawn.json
+      - name: Fix pawn.json
         run: |
           sed -i 's#\\\+#/#g' pawn.json
-          grep -n "entry\|output" pawn.json
+          jq '.dependencies += ["Zeex/samp-plugin-crashdetect"]' pawn.json > pawn.tmp
+          mv pawn.tmp pawn.json
+          grep -n "entry\|output\|crashdetect" pawn.json
 
       - name: Ensure
         run: sampctl ensure
-
-      - name: Add crashdetect
-        run: sampctl package install Zeex/samp-plugin-crashdetect
 
       - name: Build
         run: sampctl build
