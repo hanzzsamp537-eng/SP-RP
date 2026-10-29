@@ -3,6 +3,8 @@ on: workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-22.04
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -16,10 +18,12 @@ jobs:
         run: |
           sed -i 's#\\\+#/#g' pawn.json
           grep -n "entry\|output" pawn.json
-          ls gamemodes
 
       - name: Ensure
         run: sampctl ensure
+
+      - name: Add crashdetect
+        run: sampctl package install Zeex/samp-plugin-crashdetect
 
       - name: Build
         run: sampctl build
