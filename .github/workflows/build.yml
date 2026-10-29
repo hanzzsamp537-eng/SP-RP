@@ -3,8 +3,6 @@ on: workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-22.04
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -17,12 +15,15 @@ jobs:
       - name: Fix pawn.json
         run: |
           sed -i 's#\\\+#/#g' pawn.json
-          jq '.dependencies += ["Zeex/samp-plugin-crashdetect"]' pawn.json > pawn.tmp
+          jq '.dependencies = ((.dependencies // []) + ["Zeex/samp-plugin-crashdetect:v4.21"] | unique)' pawn.json > pawn.tmp
           mv pawn.tmp pawn.json
-          grep -n "entry\|output\|crashdetect" pawn.json
+          head -40 pawn.json
 
       - name: Ensure
         run: sampctl ensure
+
+      - name: Find crashdetect
+        run: find . -iname "crashdetect*" | head -20
 
       - name: Build
         run: sampctl build
