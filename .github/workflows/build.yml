@@ -5,13 +5,25 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+
       - name: Install sampctl
         run: |
           curl -L https://github.com/Southclaws/sampctl/releases/download/1.11.3/sampctl_1.11.3_linux_amd64.tar.gz | tar xz
           sudo mv sampctl /usr/local/bin/
           sampctl version
-      - run: sampctl ensure
-      - run: sampctl build
+
+      - name: Fix path pawn.json
+        run: |
+          sed -i 's#\\\+#/#g' pawn.json
+          grep -n "entry\|output" pawn.json
+          ls gamemodes
+
+      - name: Ensure
+        run: sampctl ensure
+
+      - name: Build
+        run: sampctl build
+
       - uses: actions/upload-artifact@v4
         with:
           name: sprp-build
