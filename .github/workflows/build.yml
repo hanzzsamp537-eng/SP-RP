@@ -13,17 +13,16 @@ jobs:
           sampctl version
 
       - name: Fix pawn.json
-        run: |
-          sed -i 's#\\\+#/#g' pawn.json
-          jq '.dependencies = ((.dependencies // []) + ["Zeex/samp-plugin-crashdetect:v4.21"] | unique)' pawn.json > pawn.tmp
-          mv pawn.tmp pawn.json
-          head -40 pawn.json
+        run: sed -i 's#\\\+#/#g' pawn.json
 
       - name: Ensure
         run: sampctl ensure
 
-      - name: Find crashdetect
-        run: find . -iname "crashdetect*" | head -20
+      - name: Disable crashdetect include
+        run: |
+          grep -rn "crashdetect" gamemodes --include=*.pwn --include=*.inc | head -20
+          sed -i 's#^\s*\#include\s*<crashdetect>#// &#' gamemodes/config/includes.pwn
+          sed -n '10,16p' gamemodes/config/includes.pwn
 
       - name: Build
         run: sampctl build
