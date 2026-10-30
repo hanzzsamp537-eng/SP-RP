@@ -1,0 +1,25 @@
+name: plugins
+on: workflow_dispatch
+jobs:
+  plugins:
+    runs-on: ubuntu-22.04
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux server and plugins
+        run: |
+          curl -L https://github.com/Southclaws/sampctl/releases/download/1.11.3/sampctl_1.11.3_linux_amd64.tar.gz | tar xz
+          sudo mv sampctl /usr/local/bin/
+          sed -i 's#\\\+#/#g' pawn.json
+          sampctl ensure
+          sampctl server ensure || true
+          ls -la . plugins
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sprp-server-linux
+          path: |
+            plugins
+            samp03svr
+            announce
+            server.cfg
