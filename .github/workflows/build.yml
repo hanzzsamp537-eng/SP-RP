@@ -13,7 +13,10 @@ jobs:
           sampctl version
 
       - name: Fix pawn.json
-        run: sed -i 's#\\\+#/#g' pawn.json
+        run: |
+          sed -i 's#\\\+#/#g' pawn.json
+          jq '.dependencies += ["IS4Code/PawnPlus:v1.5.3"]' pawn.json > pawn.tmp
+          mv pawn.tmp pawn.json
 
       - name: Ensure
         run: sampctl ensure
@@ -22,15 +25,14 @@ jobs:
         run: |
           sed -i '/#include.*crashdetect/ s#^#// #' gamemodes/config/includes.pwn
           find gamemodes legacy -type f \( -name "*.pwn" -o -name "*.inc" \) -exec sed -i '/#include/ s#\\#/#g' {} +
+          sed -i '1i #pragma compat 1' gamemodes/gamemode.pwn
+          head -3 gamemodes/gamemode.pwn
 
-      - name: Check missing includes
+      - name: Info
         run: |
-          find gamemodes legacy -type f \( -name "*.pwn" -o -name "*.inc" \) -exec grep -hoE '#include[[:space:]]*[<"][^>"]+[>"]' {} + \
-            | sed -E 's/#include[[:space:]]*[<"]([^>"]+)[>"]/\1/' | sort -u | while read -r inc; do
-              if ! find . \( -ipath "*/$inc" -o -ipath "*/$inc.inc" -o -ipath "*/$inc.pwn" \) | grep -q .; then
-                echo "MISSING: $inc"
-              fi
-            done | head -60
+          grep -rnE "include.*(callbacks.pwn|newspaper/header|zmessage|foreach|discord-connector)" gamemodes legacy | head -20
+          echo "--- legacy"; ls legacy | head -50
+          echo "--- gamemodes"; ls gamemodes | head -50
 
       - name: Build
         run: sampctl build
