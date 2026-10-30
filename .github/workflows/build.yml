@@ -1,49 +1,70 @@
 name: build
 on: workflow_dispatch
 jobs:
-  build:
-    runs-on: ubuntu-22.04
+  compile:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install sampctl
         run: |
-          curl -L https://github.com/Southclaws/sampctl/releases/download/1.11.3/sampctl_1.11.3_linux_amd64.tar.gz | tar xz
-          sudo mv sampctl /usr/local/bin/
-          sampctl version
+          gh release download 1.11.3 -R Southclaws/sampctl -p "*windows_amd64*"
+          ls
+          for f in sampctl*windows_amd64*; do
+            case "$f" in
+              *.zip) 7z x -y "$f" ;;
+              *.tar.gz) tar xzf "$f" ;;
+            esac
+          done
+          ls
+          ./sampctl.exe version
 
       - name: Fix pawn.json
         run: |
-          sed -i 's#\\\+#/#g' pawn.json
           jq '.dependencies += ["IS4Code/PawnPlus:v1.5.3", "maddinat0r/samp-discord-connector:v0.3.6-pre"]' pawn.json > pawn.tmp
           mv pawn.tmp pawn.json
 
       - name: Ensure
-        run: sampctl ensure
+        run: ./sampctl.exe ensure
 
       - name: Fix includes
         run: |
           sed -i '/#include.*crashdetect/ s#^#// #' gamemodes/config/includes.pwn
-          find gamemodes legacy dependencies -type f \( -name "*.pwn" -o -name "*.inc" -o -name "*.inc.in" \) -exec sed -i -E '/#(try)?include/ s#\\#/#g' {} +
-          sed -i '1i #pragma compat 1' gamemodes/gamemode.pwn
-          printf '#if defined _INC_foreach_shim\n#endinput\n#endif\n#define _INC_foreach_shim\n#include <YSI_Data/y_iterate>\n' > legacy/foreach.inc
+          printf '#if defined _INC_foreach_shim\n#endinput\n#endif\n#define _INC_foreach_shim\n#include <YSI_Data\\y_iterate>\n' > legacy/foreach.inc
           cp dependencies/samp-discord-connector/discord-connector.inc.in legacy/discord-connector.inc
           sed -i -E 's/@[A-Za-z_]+@/0/g' legacy/discord-connector.inc
-          grep -rlE "#error.*(Could not find|Did you use|Use .#include)" dependencies | xargs -r sed -i -E '/#error.*(Could not find|Did you use|Use .#include)/ s#^#//#'
-          find dependencies legacy -type f -name "*.inc" | while read -r f; do
-            d=$(dirname "$f"); b=$(basename "$f"); l=$(echo "$b" | tr 'A-Z' 'a-z')
-            if [ "$b" != "$l" ] && [ ! -e "$d/$l" ]; then ln -s "$b" "$d/$l"; fi
-          done
-          true
 
       - name: Build
-        run: sampctl build
+        run: ./sampctl.exe build
 
       - uses: actions/upload-artifact@v4
         with:
-          name: sprp-build
+          name: sprp-amx
           path: |
             gamemodes
-            dependencies
             scriptfiles
             models
+            legacy
+
+  plugins:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux plugins
+        run: |
+          curl -L https://github.com/Southclaws/sampctl/releases/download/1.11.3/sampctl_1.11.3_linux_amd64.tar.gz | tar xz
+          sudo mv sampctl /usr/local/bin/
+          sed -i 's#\\\+#/#g' pawn.json
+          sampctl ensure
+          ls plugins
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sprp-plugins-linux
+          path: |
+            plugins
+            dependencies
