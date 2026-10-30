@@ -8,21 +8,23 @@ jobs:
         shell: bash
     env:
       GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install sampctl
         run: |
           gh release download 1.11.3 -R Southclaws/sampctl -p "*windows_amd64*"
-          ls
           for f in sampctl*windows_amd64*; do
             case "$f" in
               *.zip) 7z x -y "$f" ;;
               *.tar.gz) tar xzf "$f" ;;
             esac
           done
-          ls
           ./sampctl.exe version
+
+      - name: Install VC runtime
+        run: choco install vcredist140 -y --no-progress || true
 
       - name: Fix pawn.json
         run: |
@@ -40,9 +42,22 @@ jobs:
           sed -i -E 's/@[A-Za-z_]+@/0/g' legacy/discord-connector.inc
 
       - name: Build
+        id: build
+        continue-on-error: true
         run: ./sampctl.exe build
 
+      - name: Diagnose compiler
+        if: steps.build.outcome == 'failure'
+        run: |
+          find "$HOME" -maxdepth 7 -iname "pawncc*" 2>/dev/null | head -5
+          find "$HOME" -maxdepth 7 -iname "pawnc*.dll" 2>/dev/null | head -5
+          P=$(find "$HOME" -iname pawncc.exe 2>/dev/null | head -1)
+          echo "PATH: $P"
+          ls -la "$(dirname "$P")" 2>/dev/null
+          "$P" -h 2>&1 | head -5 || true
+
       - uses: actions/upload-artifact@v4
+        if: steps.build.outcome == 'success'
         with:
           name: sprp-amx
           path: |
@@ -51,20 +66,6 @@ jobs:
             models
             legacy
 
-  plugins:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Linux plugins
-        run: |
-          curl -L https://github.com/Southclaws/sampctl/releases/download/1.11.3/sampctl_1.11.3_linux_amd64.tar.gz | tar xz
-          sudo mv sampctl /usr/local/bin/
-          sed -i 's#\\\+#/#g' pawn.json
-          sampctl ensure
-          ls plugins
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sprp-plugins-linux
-          path: |
-            plugins
-            dependencies
+      - name: Result
+        if: steps.build.outcome == 'failure'
+        run: exit 1
