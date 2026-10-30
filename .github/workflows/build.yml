@@ -23,8 +23,9 @@ jobs:
           done
           ./sampctl.exe version
 
-      - name: Install VC runtime
-        run: choco install vcredist140 -y --no-progress || true
+      - name: Install VC runtimes
+        run: |
+          choco install vcredist2010 vcredist2012 vcredist2013 vcredist140 -y --no-progress --ignore-checksums || true
 
       - name: Fix pawn.json
         run: |
@@ -49,12 +50,11 @@ jobs:
       - name: Diagnose compiler
         if: steps.build.outcome == 'failure'
         run: |
-          find "$HOME" -maxdepth 7 -iname "pawncc*" 2>/dev/null | head -5
-          find "$HOME" -maxdepth 7 -iname "pawnc*.dll" 2>/dev/null | head -5
-          P=$(find "$HOME" -iname pawncc.exe 2>/dev/null | head -1)
-          echo "PATH: $P"
-          ls -la "$(dirname "$P")" 2>/dev/null
-          "$P" -h 2>&1 | head -5 || true
+          P="$HOME/AppData/Roaming/sampctl/pawn/3.10.10/pawncc.exe"
+          "$P" > /tmp/out.txt 2>&1; echo "exit=$?"; head -5 /tmp/out.txt
+          D=$(ls -d "/c/Program Files/Microsoft Visual Studio/"*/*/VC/Tools/MSVC/*/bin/Hostx64/x64 2>/dev/null | tail -1)
+          echo "dumpbin dir: $D"
+          MSYS_NO_PATHCONV=1 "$D/dumpbin.exe" /dependents "$P" "$(dirname "$P")/pawnc.dll" 2>&1 | grep -iE "dll|machine" | head -30
 
       - uses: actions/upload-artifact@v4
         if: steps.build.outcome == 'success'
