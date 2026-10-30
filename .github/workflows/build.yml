@@ -38,7 +38,7 @@ jobs:
       - name: Fix includes
         run: |
           sed -i '/#include.*crashdetect/ s#^#// #' gamemodes/config/includes.pwn
-          printf '#if defined _INC_foreach_shim\n#endinput\n#endif\n#define _INC_foreach_shim\n#include <YSI_Data\\y_iterate>\n' > legacy/foreach.inc
+          sed -i -E '/#include[[:space:]]*<foreach>/ s#^#// #' gamemodes/browser/engine.pwn
           cp dependencies/samp-discord-connector/discord-connector.inc.in legacy/discord-connector.inc
           sed -i -E 's/@[A-Za-z_]+@/0/g' legacy/discord-connector.inc
 
@@ -46,15 +46,6 @@ jobs:
         id: build
         continue-on-error: true
         run: ./sampctl.exe build
-
-      - name: Diagnose compiler
-        if: steps.build.outcome == 'failure'
-        run: |
-          P="$HOME/AppData/Roaming/sampctl/pawn/3.10.10/pawncc.exe"
-          "$P" > /tmp/out.txt 2>&1; echo "exit=$?"; head -5 /tmp/out.txt
-          D=$(ls -d "/c/Program Files/Microsoft Visual Studio/"*/*/VC/Tools/MSVC/*/bin/Hostx64/x64 2>/dev/null | tail -1)
-          echo "dumpbin dir: $D"
-          MSYS_NO_PATHCONV=1 "$D/dumpbin.exe" /dependents "$P" "$(dirname "$P")/pawnc.dll" 2>&1 | grep -iE "dll|machine" | head -30
 
       - uses: actions/upload-artifact@v4
         if: steps.build.outcome == 'success'
