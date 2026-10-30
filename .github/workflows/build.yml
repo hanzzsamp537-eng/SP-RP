@@ -15,7 +15,7 @@ jobs:
       - name: Fix pawn.json
         run: |
           sed -i 's#\\\+#/#g' pawn.json
-          jq '.dependencies += ["IS4Code/PawnPlus:v1.5.3"]' pawn.json > pawn.tmp
+          jq '.dependencies += ["IS4Code/PawnPlus:v1.5.3", "maddinat0r/samp-discord-connector:v0.3.6-pre"]' pawn.json > pawn.tmp
           mv pawn.tmp pawn.json
 
       - name: Ensure
@@ -26,13 +26,17 @@ jobs:
           sed -i '/#include.*crashdetect/ s#^#// #' gamemodes/config/includes.pwn
           find gamemodes legacy -type f \( -name "*.pwn" -o -name "*.inc" \) -exec sed -i '/#include/ s#\\#/#g' {} +
           sed -i '1i #pragma compat 1' gamemodes/gamemode.pwn
-          head -3 gamemodes/gamemode.pwn
+          printf '#if defined _INC_foreach_shim\n#endinput\n#endif\n#define _INC_foreach_shim\n#include <YSI_Data/y_iterate>\n' > legacy/foreach.inc
+          find dependencies legacy -type f -name "*.inc" | while read -r f; do
+            d=$(dirname "$f"); b=$(basename "$f"); l=$(echo "$b" | tr 'A-Z' 'a-z')
+            if [ "$b" != "$l" ] && [ ! -e "$d/$l" ]; then ln -s "$b" "$d/$l"; fi
+          done
+          true
 
       - name: Info
         run: |
-          grep -rnE "include.*(callbacks.pwn|newspaper/header|zmessage|foreach|discord-connector)" gamemodes legacy | head -20
-          echo "--- legacy"; ls legacy | head -50
-          echo "--- gamemodes"; ls gamemodes | head -50
+          grep -rnE "callbacks.pwn|zmessage" gamemodes legacy | head -20
+          find . -iname "callbacks.pwn" -o -iname "zmessage*" -o -iname "discord-connector*" | head -20
 
       - name: Build
         run: sampctl build
